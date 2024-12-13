@@ -59,186 +59,254 @@ Return BestSolution, BestCost
 
 '''
 
-import random
+import random, math
 from utils import read_input, evaluate
+from Greedy import greedy_tsp_with_time_windows
 
-# Global variables for pheromone and heuristic matrices
-pheromone = []
-heuristic = []
+class ACO_Solver():
+    # Global variables for pheromone and heuristic matrices
 
-def initialize_pheromone_matrix(n, initial_pheromone=1.0):
-    """
-    Initialize the pheromone matrix with a given initial pheromone level.
+    def __init__(self, num_ants, iteration, alpha, beta, theta, evaporation_rate, N, time_windows, travel_time):
+        self.N = N
+        self.time_windows = time_windows
+        self.travel_time = travel_time
+
+        self.pheromone = []
+        self.heuristic = []
+        self.time_heuristic = []
+        
+        self.initialize_pheromone_matrix(N)
+        self.construct_heuristic()
+        self.construct_time_heuristic()
+        # print(time_heuristic)
+        # print(heuristic)
+
+        greedy_solution, cost = greedy_tsp_with_time_windows(N, travel_time, time_windows)
+
+        prev_node = 0
+        for next_node in greedy_solution:
+            self.pheromone[prev_node][next_node] = 0.9999
+            prev_node = next_node
+
+        self.alpha = alpha # Pheromone influence
+        self.beta = beta  # Heuristic influence
+        self.theta = theta
+        self.evaporation_rate = evaporation_rate
+        self.Q = cost  # Pheromone deposit constant
+        self.num_ants = num_ants
+        self.num_iterations = iteration
+
+    def initialize_pheromone_matrix(self, N, initial_pheromone=0.05):
+        """
+        Initialize the pheromone matrix with a given initial pheromone level.
+        
+        Args:
+            n (int): Number of nodes.
+            initial_pheromone (float): Initial pheromone level for all edges.
+
+        Returns:
+            list of lists: Pheromone matrix.
+        """
+        self.pheromone = [[initial_pheromone for _ in range(N + 1)] for _ in range(N + 1)]
+
+    def construct_heuristic(self):
+        """
+        Construct the heuristic matrix based on travel time.
+
+        Args:
+            travel_time (list of lists): Matrix of travel times between nodes.
+
+        Returns:
+            list of lists: Heuristic matrix where heuristic[i][j] is the inverse of travel_time[i][j].
+        """
+        max_time_travel = 0
+        for row in self.travel_time:
+            max_time_travel = max(max_time_travel, max(row))
+
+        self.heuristic = [[  max_time_travel / (self.travel_time[i][j]) if self.travel_time[i][j] > 0 else 0 for j in range(self.N + 1)] for i in range(self.N + 1)]
+        mx_ele = 0
+        mn_ele = float('inf')
+        for row in self.heuristic:
+            mx_ele = max(mx_ele, max(row))
+            mn_ele = min(mn_ele, min(row))
+        
+        self.heuristic = [[ (e - mn_ele)/mx_ele for e in row ] for row in self.heuristic ]
+
+    def construct_time_heuristic(self):
+        """
+        Construct the heuristic matrix based on travel time.
+
+        Args:
+            travel_time (list of lists): Matrix of travel times between nodes.
+
+        Returns:
+            list of lists: Heuristic matrix where heuristic[i][j] is the inverse of travel_time[i][j].
+        """
     
-    Args:
-        n (int): Number of nodes.
-        initial_pheromone (float): Initial pheromone level for all edges.
+        l = [ l for (e, l, d) in self.time_windows]
+        self.time_heuristic = [0.99] + [ 0.99 for (e, l, d) in self.time_windows[1:]]
+        mx_ele = max(self.time_heuristic)
+        mn_ele = min(self.time_heuristic)
+        if (mx_ele != mn_ele):
+            self.time_heuristic = [(e - mn_ele) / mx_ele for e in self.time_heuristic]
 
-    Returns:
-        list of lists: Pheromone matrix.
-    """
-    global pheromone
-    pheromone = [[initial_pheromone for _ in range(n + 1)] for _ in range(n + 1)]
+    def update_pheromone(self, solutions):
+        """
+        Update the pheromone levels based on the solutions found by ants.
 
-def construct_heuristic(travel_time):
-    """
-    Construct the heuristic matrix based on travel time.
+        Args:
+            solutions (list of tuples): List of (solution, cost) pairs.
+            evaporation_rate (float): Rate at which pheromone evaporates.
+            Q (float): Constant for pheromone deposit.
 
-    Args:
-        travel_time (list of lists): Matrix of travel times between nodes.
+        Returns:
+            None
+        """     
+        max_pheromone = 0.9999
+        min_pheromone = 0.0001
+        # Evaporate pheromone
+        for i in range(self.N + 1):
+            for j in range(self.N + 1):
+                self.pheromone[i][j] *= (1 - self.evaporation_rate)
 
-    Returns:
-        list of lists: Heuristic matrix where heuristic[i][j] is the inverse of travel_time[i][j].
-    """
-    global heuristic
-    heuristic = [[1 / travel_time[i][j] if travel_time[i][j] > 0 else 0 for j in range(len(travel_time))] for i in range(len(travel_time))]
+        # Deposit pheromone
+        for solution, cost in solutions:
+            # print("cf")
+            if cost == -1:
+                for i in range( len(solution) ):
+                    self.time_heuristic[solution[i]] = ( self.time_heuristic[solution[i]] / (self.N + 1)**1.5 * (self.N - i)**1.5 ) ** (3/4)
+                mx_ele = max(self.time_heuristic)
+                mn_ele = min(self.time_heuristic)
+                if (mx_ele != mn_ele):
+                    self.time_heuristic = [(e - mn_ele) / mx_ele for e in self.time_heuristic]
+                pheromone_delta = 0
+                self.time_heuristic = [min( max_pheromone, max(min_pheromone, i) ) for i in self.time_heuristic]
 
-
-def update_pheromone(solutions, evaporation_rate, Q):
-    """
-    Update the pheromone levels based on the solutions found by ants.
-
-    Args:
-        solutions (list of tuples): List of (solution, cost) pairs.
-        evaporation_rate (float): Rate at which pheromone evaporates.
-        Q (float): Constant for pheromone deposit.
-
-    Returns:
-        None
-    """     
-    global pheromone
-    # Evaporate pheromone
-    for i in range(len(pheromone)):
-        for j in range(len(pheromone)):
-            pheromone[i][j] *= (1 - evaporation_rate)
-
-    # Deposit pheromone
-    for solution, cost in solutions:
-        if cost == -1:
-            pheromone_delta = - 0.005 * Q
-        else:
-            pheromone_delta = Q / cost
-        for k in range(len(solution) - 1):
-            i, j = solution[k], solution[k + 1]
-            pheromone[i][j] += pheromone_delta # One direction 
-            # pheromone[i][j] = max(0, pheromone[i][j])
+            else:
+                pheromone_delta = self.Q / cost
+                for k in range(len(solution) - 1):
+                    i, j = solution[k], solution[k + 1]
+                    self.pheromone[i][j] += pheromone_delta # One direction 
+                    self.pheromone[i][j] = min( max_pheromone, max(min_pheromone, self.pheromone[i][j]) )
+                # pheromone[i][j] = max(0, pheromone[i][j])
 
 
-def choose_next_node(current_node, visited, alpha, beta, timer, travel_time, time_windows):
-    """
-    Choose the next node based on pheromone and heuristic information.
+    def choose_next_node(self, current_node, visited, timer):
+        """
+        Choose the next node based on pheromone and heuristic information.
 
-    Args:
-        current_node (int): Current position of the ant.
-        visited (set): Set of visited nodes.
-        alpha (float): Pheromone influence.
-        beta (float): Heuristic influence.
+        Args:
+            current_node (int): Current position of the ant.
+            visited (set): Set of visited nodes.
+            alpha (float): Pheromone influence.
+            beta (float): Heuristic influence.
 
-    Returns:
-        int: The chosen next node.
-    """
-    global pheromone, heuristic
-    probabilities = []
-    total_prob = 0
-    for next_node in range(len(pheromone)):
-        if next_node not in visited and timer + travel_time[current_node][next_node] <= time_windows[next_node][1]:
-            prob = (pheromone[current_node][next_node] ** alpha) * (heuristic[current_node][next_node] ** beta)
-            probabilities.append((next_node, prob))
-            total_prob += prob
+        Returns:
+            int: The chosen next node.
+        """
+        probabilities = []
+        total_prob = 0
+        for next_node in range(1, self.N + 1):
+            start_time, end_time, dur = self.time_windows[next_node]
+            if next_node not in visited and (timer + self.travel_time[current_node][next_node] <= end_time):
+                prob = (self.pheromone[current_node][next_node] ** self.alpha) * (self.heuristic[current_node][next_node] ** self.beta) * (self.time_heuristic[next_node] ** self.theta)
+                probabilities.append((next_node, prob))
+                total_prob += prob
 
-    if len(probabilities) == 0:
-        return -1, -1
+        if total_prob == 0:
+            return -1, -1
 
-    if total_prob == 0:
-        next_node = random.choice([node for node in range(len(pheromone)) if node not in visited])
-        timer = max(timer + travel_time[current_node][next_node], time_windows[next_node][0]) + time_windows[next_node][2]
-        return timer, next_node
+        # Apply exponential weighting
+        # probabilities = [(next_node, math.exp(prob)) for next_node, prob in probabilities]
+        
+        # # Normalize probabilities
+        total = sum(prob for _, prob in probabilities)
+        probabilities = [(next_node, prob / total) for next_node, prob in probabilities]
+        # print(probabilities)
 
-    probabilities = [(node, prob / total_prob) for node, prob in probabilities]
-    r = random.random()
-    cumulative = 0
-    for next_node, prob in probabilities:
-        cumulative += prob
-        if r <= cumulative:
-            timer = max(timer + travel_time[current_node][next_node], time_windows[next_node][0]) + time_windows[next_node][2]
-            return timer, next_node
-
-
-def construct_solution(n, alpha, beta, travel_time, time_windows):
-    """
-    Construct a solution for an ant.
-
-    Args:
-        n (int): Number of nodes.
-        pheromone (list of lists): Pheromone matrix.
-        heuristic (list of lists): Heuristic matrix (e.g., inverse of distance).
-        alpha (float): Pheromone influence.
-        beta (float): Heuristic influence.
-
-    Returns:
-        list: A solution represented as a sequence of node indices.
-    """
-    global pheromone, heuristic
-    solution = [0]
-    visited = set()
-    current_node = 0
-    visited.add(current_node)
-    timer = 0
+        r = random.random()
+        cumulative = 0
+        for next_node, prob in probabilities:
+            cumulative += prob
+            if r <= cumulative:
+                start_time, end_time, dur = self.time_windows[next_node]
+                timer = max(timer + self.travel_time[current_node][next_node], start_time) + dur
+                return timer, next_node
 
 
-    while len(visited) < n + 1:
-        timer, next_node = choose_next_node(current_node, visited, alpha, beta, timer, travel_time, time_windows)
-        if timer == -1:
-            return False, solution, timer
-        solution.append(next_node)
-        visited.add(next_node)
-        current_node = next_node
-    
-    timer += travel_time[current_node][0]
+    def construct_solution(self):
+        """
+        Construct a solution for an ant.
 
-    return True, solution, timer
+        Args:
+            n (int): Number of nodes.
+            pheromone (list of lists): Pheromone matrix.
+            heuristic (list of lists): Heuristic matrix (e.g., inverse of distance).
+            alpha (float): Pheromone influence.
+            beta (float): Heuristic influence.
+
+        Returns:
+            list: A solution represented as a sequence of node indices.
+        """
+        solution = []
+        visited = set()
+        current_node = 0
+        timer = 0
+
+
+        while len(visited) < self.N:
+            timer, next_node = self.choose_next_node(current_node, visited, timer)
+            if timer == -1:
+                return False, solution, timer
+            solution.append(next_node)
+            visited.add(next_node)
+            current_node = next_node
+
+            # print(solution)
+        
+        timer += self.travel_time[current_node][0]
+
+        return True, solution, timer
+
+    def Solve(self):
+        
+        best_solution = None
+        best_cost = float('inf')
+
+        for iteration in range(self.num_iterations):
+            solutions = []
+            for _ in range(self.num_ants):
+                is_valid, solution, cost = self.construct_solution()
+                
+                solutions.append((solution, cost))
+
+                if is_valid:
+                    if cost < best_cost:
+                        best_solution = solution
+                        best_cost = cost
+                
+
+            self.update_pheromone(solutions)
+            # for row in pheromone:
+            #     for e in row:
+            #         print(f"%.2f"%e, end=" ")
+            #     print()
+            # print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
+
+        # print("Best Solution:", best_solution)
+        # print("Best Cost:", best_cost)
+        return(best_solution, best_cost)
 
 # Example usage
 if __name__ == "__main__":
     use_file = True
-    file_path = "TestCase\Subtask_10\input1.txt"
+    file_path = "MiniProjectOptimize/TestCase/Subtask_10/input2.txt"
     
     N, time_windows, travel_time = read_input(from_file=use_file, file_path=file_path)
-    initialize_pheromone_matrix(N)
-    construct_heuristic(travel_time)
 
-    alpha = 2.0  # Pheromone influence
-    beta = 1.0   # Heuristic influence
-    evaporation_rate = 0.1
-    Q = 100  # Pheromone deposit constant
-    num_ants = 10
-    num_iterations = 100
+    Solver = ACO_Solver(num_ants = 400, iteration = 100, alpha = 2.0, beta = 0, theta = 1.0, evaporation_rate = 0.1, N = N, time_windows = time_windows, travel_time = travel_time)
+    best_solution, best_cost = Solver.Solve()
 
-    best_solution = None
-    best_cost = float('inf')
-
-    for iteration in range(num_iterations):
-        solutions = []
-        for _ in range(num_ants):
-            is_valid, solution, cost = construct_solution(N, alpha, beta, travel_time, time_windows)
-            # print(solution[1:])
-            solutions.append((solution, cost))
-
-            if is_valid:
-                if cost < best_cost:
-                    best_solution = solution
-                    best_cost = cost
-            
-        # print(solutions)
-            
-            
-
-        # update_pheromone(solutions, evaporation_rate, Q)
-        # for row in pheromone:
-        #     for e in row:
-        #         print(f"%.2f"%e, end=" ")
-        #     print()
-        print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
 
     print("Best Solution:", best_solution)
     print("Best Cost:", best_cost)
