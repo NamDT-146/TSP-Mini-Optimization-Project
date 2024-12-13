@@ -300,11 +300,11 @@ class ACO_Solver():
 # Example usage
 if __name__ == "__main__":
     use_file = True
-    file_path = "MiniProjectOptimize/TestCase/Subtask_10/input2.txt"
+    file_path = "MiniProjectOptimize/TestCase/Subtask_1000/input7.txt"
     
     N, time_windows, travel_time = read_input(from_file=use_file, file_path=file_path)
 
-    Solver = ACO_Solver(num_ants = 400, iteration = 100, alpha = 2.0, beta = 0, theta = 1.0, evaporation_rate = 0.1, N = N, time_windows = time_windows, travel_time = travel_time)
+    Solver = ACO_Solver(num_ants = 4000, iteration = 10, alpha = 2.0, beta = 0, theta = 1.0, evaporation_rate = 0.1, N = N, time_windows = time_windows, travel_time = travel_time)
     best_solution, best_cost = Solver.Solve()
 
 
