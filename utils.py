@@ -67,7 +67,9 @@ def evaluate(solution, time_windows, travel_time):
 
     total_time = 0
     present_position = 0
+    how_far = 0
     for next_position in solution:
+        how_far += 1
         early_TW, late_TW, dur = time_windows[next_position]
         if next_position == 0: 
             total_time = max(total_time, early_TW) + dur #Ready to go
@@ -79,6 +81,7 @@ def evaluate(solution, time_windows, travel_time):
         if total_time <= late_TW:   
             total_time += dur
         else: 
+            # print(f"go {how_far}")
             return False, -1
 
         present_position = next_position
