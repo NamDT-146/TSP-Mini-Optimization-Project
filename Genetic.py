@@ -565,7 +565,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "MiniProjectOptimize\TestCase\Subtask_100\input1.txt")
+    N, time_windows, travel_time = read_input(True, "MiniProjectOptimize\TestCase\Subtask_1000\input7.txt")
     
 
 
