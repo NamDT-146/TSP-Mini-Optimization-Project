@@ -34,29 +34,32 @@ def tsp_with_time_windows_backtrack(N, travel_time, time_windows, initial_bound)
         # If all cities are visited, check returning to the depot
         if len(visited) == N:
             final_cost = current_time + travel_time[current_city][0]            
-            # print(final_cost)
+            print(tour)
 
             if final_cost < best_cost:
                 best_cost = final_cost
                 best_tour = tour
             return
+        
+        print(tour)
+        print(visited)
 
         # Explore all possible next cities
         for next_city in range(1, N + 1):
             if next_city not in visited:
                 start_time, end_time, dur = time_windows[next_city]
-                arrival_time = max(current_time + travel_time[current_city][next_city], start_time)
+                arrival_time = current_time + travel_time[current_city][next_city]
 
                 # Check feasibility
                 if arrival_time > end_time:
                     continue
 
                 # Update state and calculate bounds
-                next_time = arrival_time + dur
+                next_time = max(arrival_time, start_time) + dur
                 lower_bound = calculate_lower_bound(visited | {next_city}, next_time)
 
                 # Branch and Bound: prune paths with a bound worse than the current best
-                if lower_bound < best_cost:
+                if True:
                     dfs(next_city, visited | set({next_city}), next_time, tour + [next_city])
 
     # Start DFS from the depot (city 0)
