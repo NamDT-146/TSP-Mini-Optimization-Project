@@ -10,7 +10,6 @@ class GASolves():
         self.time_windows = time_windows
         self.travel_time = travel_time
         self.max_endtime = max( [l for e, l, d in self.time_windows] )
-
         self.population = []
         self.initialize_population()
         self.fitness_value = []
@@ -22,6 +21,7 @@ class GASolves():
         self.mutation_rate = mutation_rate 
         self.tournament_size = tournament_size
         self.elitism_size = elitism_size
+        self.mutation_length = 10
 
     def add_random_individuals(self, num_random_individuals):
         """ Add random individuals to the population to increase diversity. """
@@ -114,7 +114,7 @@ class GASolves():
         return offspring
 
 
-    def swap_segment_mutation(self, solution, mutation_rate):
+    def swap_segment_mutation(self, solution, mutation_rate, mutation_length):
         """
         Performs a mutation by swapping two random segments of random length in the solution.
 
@@ -129,7 +129,7 @@ class GASolves():
             size = len(solution)
             
             # Determine a random length for the segment
-            segment_length = random.randint(1, min(10, self.N // 4))  # Ensure the length is reasonable
+            segment_length = random.randint(1, min(mutation_length, self.N // 4))  # Ensure the length is reasonable
             
             # Select two random starting indices
             start1 = random.randint(0, size - segment_length)
@@ -150,7 +150,7 @@ class GASolves():
 
     
     
-    def shuffle_segment_mutation(self, solution, mutation_rate, max_segment_length = 10):
+    def shuffle_segment_mutation(self, solution, mutation_rate, max_segment_length = 20):
         """
         Perform mutation by randomly shuffling a segment of a random length within the solution.
         
@@ -235,10 +235,10 @@ class GASolves():
             offspring2 = self.order_crossover(parent2, parent1)
 
             # Mutation
-            offspring1 = self.swap_segment_mutation(offspring1, self.mutation_rate)
-            offspring2 = self.swap_segment_mutation(offspring2, self.mutation_rate)
-            offspring1 = self.shuffle_segment_mutation(offspring1, self.mutation_rate)
-            offspring2 = self.shuffle_segment_mutation(offspring2, self.mutation_rate)
+            offspring1 = self.swap_segment_mutation(offspring1, self.mutation_rate, self.mutation_length)
+            offspring2 = self.swap_segment_mutation(offspring2, self.mutation_rate, self.mutation_length)
+            offspring1 = self.shuffle_segment_mutation(offspring1, self.mutation_rate, self.mutation_length)
+            offspring2 = self.shuffle_segment_mutation(offspring2, self.mutation_rate, self.mutation_length)
             
             # Apply Local Search to the offspring
             offspring1 = self.LocalSearch(offspring1)
@@ -361,14 +361,14 @@ class GASolves():
             
             
             # You may want to track and print the best solution so far
-            print(f"Generation {gen + 1}: Best Solution: {solution}")
+            print(f"Generation {gen + 1}: Best Solution: {best_solution}")
         
             print(self.fitness(solution))
             if best_solution is None:
                 best_solution = solution
         # Optionally, return the best solution found after all generations
-            if (gen + 1) % 100 == 0:
-                self.add_random_individuals(50)
+            if (gen + 1) % 30 == 0:
+                self.add_random_individuals(30)
         return best_solution
 
     def relocate_and_remove_infeasible_nodes(self, route):
@@ -399,7 +399,8 @@ class GASolves():
                 current_time = start_time
             if current_time > end_time:
                 infeasible_node.append(next_node)
-                current_time += gap_sum / gap_count
+                if gap_count != 0:
+                    current_time += gap_sum / gap_count
             else:
                 gap_sum += self.travel_time[current_node][next_node] + duration
                 gap_count += 1
@@ -565,7 +566,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "MiniProjectOptimize\TestCase\Subtask_1000\input7.txt")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\N20ft304.dat")
     
 
 
