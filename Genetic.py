@@ -610,7 +610,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg152.3.tw")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\n80w60.001.txt")
     
 
 
@@ -619,7 +619,7 @@ if __name__ == '__main__':
         N = N,
         time_windows=time_windows,
         travel_time=travel_time,
-        population_size=200, 
+        population_size=1000, 
         generations=999999, 
         mutation_rate=0.2, 
         tournament_size=8, 
