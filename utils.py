@@ -88,3 +88,9 @@ def evaluate(solution, time_windows, travel_time):
 
     return True, total_time + travel_time[present_position][0]
     
+
+if __name__ == "__main__":
+    N, time_windows, travel_time = read_input(True, "input.txt")
+
+    solution = [1, 7, 11, 12, 17, 8, 13, 9, 20, 2, 16, 10, 3, 18, 4, 19, 14, 6, 15, 5]
+    print(evaluate(solution, time_windows, travel_time ))
