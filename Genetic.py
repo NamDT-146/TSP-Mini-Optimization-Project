@@ -1,15 +1,21 @@
 import random
 from utils import evaluate, read_input
 from Greedy import greedy_tsp_with_time_windows
+import time
+
 
 class GASolves():
         
-    def __init__(self, N, time_windows, travel_time, population_size, generations, mutation_rate, tournament_size, elitism_size):
+    def __init__(self, N, time_windows, travel_time, population_size, generations, mutation_rate, tournament_size, elitism_size, time_out):
         self.N = N
         self.population_size = population_size
         self.time_windows = time_windows
         self.travel_time = travel_time
         self.max_endtime = max( [l for e, l, d in self.time_windows] )
+        # Flatten the list of lists into a single list
+        all_elements = [item for inner_list in self.travel_time for item in inner_list]
+        # Overall average
+        self.mean_distance = sum(all_elements) / len(all_elements)
         self.population = []
         self.initialize_population()
         self.fitness_value = []
@@ -21,7 +27,12 @@ class GASolves():
         self.mutation_rate = mutation_rate 
         self.tournament_size = tournament_size
         self.elitism_size = elitism_size
-        self.mutation_length = 10
+        self.mutation_length = 5
+        self.start_time = time.process_time()
+        # set the proper time to run algorithm
+        self.end_time = self.start_time + time_out
+         
+        
 
     def add_random_individuals(self, num_random_individuals):
         """ Add random individuals to the population to increase diversity. """
@@ -84,8 +95,10 @@ class GASolves():
 
         current_time += self.travel_time[current_node][0]
 
+        feasible_loss =  (save_rm_node + 1) * self.mean_distance * 2 +  (total_penalty) / self.N + 0.25 * (self.max_endtime - mn_end_time) / self.N  
         # Return the total fitness, considering distance and penalty
-        total_fitness =  (save_rm_node + 1) * 1000 + (total_penalty) / self.N + 0.25 * (self.max_endtime - mn_end_time) / self.N + current_time / self.N
+        total_fitness =  feasible_loss * 5 + current_time / self.N
+        # total_fitness =  (total_penalty) / self.N + 0.25 * (self.max_endtime - mn_end_time) / self.N + current_time / self.N
         return total_fitness
 
     def update_fitness_value(self):
@@ -162,7 +175,9 @@ class GASolves():
         if random.random() < mutation_rate:
             max_segment_length = min(max_segment_length, self.N // 4)
             # Choose a random segment length between 2 and max_segment_length
-            segment_length = random.randint(2, max_segment_length)
+            segment_length = 2
+            if max_segment_length >= 2:
+                segment_length = random.randint(2, max_segment_length)
             
             # Choose a random start index for the segment to shuffle
             start_idx = random.randint(0, len(solution) - segment_length)
@@ -175,45 +190,107 @@ class GASolves():
             solution[start_idx:start_idx + segment_length] = segment
         
         return solution
-    
-    # def LocalSearch(self, solution):
-    #     """
-    #     Perform a lighter local search using 2-opt.
-    #     :param solution: Current solution (tour)
-    #     :return: Improved solution
-    #     """
-    #     n = len(solution)
 
-    #     improved = False
+    def Growth(self, solution):
+        """
+        Apply local search to improve the fitness of a solution in TSP-TW.
+
+        Args:
+            solution (list): Current route as a list of nodes.
+            time_windows (dict): Dictionary of nodes with (earliest, latest) time windows.
+            travel_time (dict): Travel time matrix.
+            fitness_function (function): Function to evaluate the fitness of a solution.
+
+        Returns:
+            list: Improved solution if fitness improves, otherwise the original.
+        """
+        current_fitness = self.fitness(solution)
+        improved_solution = self.LocalSearch(solution)
+
+        # Calculate fitness of the improved solution
+        improved_fitness = self.fitness(improved_solution)
+
+        # Return the improved solution only if fitness improves
+        if improved_fitness < current_fitness:  # Minimize fitness
+            return improved_solution
+        return solution
+
+    # def LocalSearch(self, route):
+    #     """
+    #     Applies fitness-guided 2-Opt local search for TSP-TW.
+
+    #     Args:
+    #         route (list): Current route as a list of nodes.
+    #         time_windows (dict): Dictionary of nodes with (earliest, latest) time windows.
+    #         travel_time (dict): Travel time matrix.
+    #         fitness_function (function): Function to evaluate the fitness of a solution.
+
+    #     Returns:
+    #         list: Improved route if fitness improves, otherwise the original.
+    #     """
+    #     current_fitness = self.fitness(route)
+    #     best_route = route[:]
         
-    #     for i in range(0, n - 2):
-    #         for j in range(i + 1, n - 1):
-    #             # Perform the 2-opt swap
-    #             new_solution = self.two_opt_move(solution, i, j)
-    #             is_valid, cost = evaluate(new_solution, self.time_windows, self.travel_time)
-    #             if is_valid and self.fitness(new_solution) < self.fitness(solution):
-    #                 solution = new_solution
-    #                 improved = True
-    #                 break
-    #         if improved:
-    #             break
+    #     for i in range(1, len(route) - 2):  # Avoid depot at start and end
+    #         for j in range(i + 1, len(route) - 1):
+    #             # Perform a 2-opt swap
+    #             new_route = best_route[:i] + best_route[i:j][::-1] + best_route[j:]
 
+                
+    #             new_fitness = self.fitness(new_route)
+
+    #             # Update if fitness improves
+    #             if new_fitness < current_fitness:
+    #                 current_fitness = new_fitness
+    #                 best_route = new_route
+    #     return best_route
+
+
+    def LocalSearch(self, route, num_trials=3):
+        """
+        Randomized O(1) local search: Relocate a single random node to a better position.
+
+        Args:
+            route (list): Current route as a list of nodes.
+            time_windows (dict): Dictionary of nodes with (earliest, latest) time windows.
+            travel_time (dict): Travel time matrix.
+            fitness_function (function): Function to evaluate the fitness of a solution.
+            num_trials (int): Number of random relocation trials to perform.
+
+        Returns:
+            list: Improved route if fitness improves, otherwise the original route.
+        """
+        current_fitness = self.fitness(route)
+        n = len(route)
+        
+        for _ in range(num_trials):  # Perform a limited number of random trials
+            i = random.randint(n // 2 - 1, n - 1)  # Random node to relocate (skip depot)
+            node = route.pop(i)  # Remove the node temporarily
+            
+            # Try inserting at random positions
+            best_position = i
+            best_fitness = current_fitness
+            for _ in range(num_trials):  # Try a small random subset of positions
+                j = random.randint(0, n - 1)  # Random position (skip depot positions)
+                route.insert(j, node)
+                
+                new_fitness = self.fitness(route)
+                if new_fitness < best_fitness:  # Check if fitness improves
+                    best_position = j
+                    best_fitness = new_fitness
+                
+                route.pop(j)  # Undo insertion
+            
+            # Insert the node back at the best position found
+            route.insert(best_position, node)
+            current_fitness = best_fitness
+        
+        return route
+
+
+    # def LocalSearch(self, solution):
+        
     #     return solution
-
-    # def two_opt_move(self, solution, i, j):
-    #     """
-    #     Perform a 2-opt move on the solution.
-    #     :param solution: Current solution (tour)
-    #     :param i, j: Indices to swap
-    #     :return: New solution after 2-opt move
-    #     """
-    #     new_solution = solution[:]
-    #     new_solution[i:j+1] = reversed(new_solution[i:j+1])
-    #     return new_solution
-
-    def LocalSearch(self, solution):
-        return self.relocate_and_remove_infeasible_nodes(solution)
-        # return solution
         
 
     def tournament_selection(self, tournament_size):
@@ -239,14 +316,14 @@ class GASolves():
             offspring2 = self.swap_segment_mutation(offspring2, self.mutation_rate, self.mutation_length)
             offspring1 = self.shuffle_segment_mutation(offspring1, self.mutation_rate, self.mutation_length)
             offspring2 = self.shuffle_segment_mutation(offspring2, self.mutation_rate, self.mutation_length)
-            
-            # Apply Local Search to the offspring
-            offspring1 = self.LocalSearch(offspring1)
-            offspring2 = self.LocalSearch(offspring2)
-            
-            offspring1 = self.improve(offspring1, 1)
-            offspring2 = self.improve(offspring2, 1)
 
+            offspring1 = self.improve(offspring1, 5, 1)
+            offspring2 = self.improve(offspring2, 5, 1)
+            # Apply Local Search to the offspring
+
+            offspring1 = self.Growth(offspring1)
+            offspring2 = self.Growth(offspring2)
+            
 
 
             
@@ -284,7 +361,7 @@ class GASolves():
         # Return the best solution
         return self.population[best_solution_idx]
 
-    def repair_solution(self, route, best_fitness, max_depth = 20):
+    def repair_solution(self, route, best_fitness, max_depth = 10):
         """
         Repairs a TSP-TW route to ensure time window feasibility.
 
@@ -338,38 +415,74 @@ class GASolves():
 
         return True, route
     
-    def improve(self, solution, iter):
-        initial_solution = solution
-        best_fitness = self.fitness(initial_solution)
+    def improve(self, solution, max_depth, iter):
+        best_solution = solution
+        best_fitness = self.fitness(best_solution)
+        completed, solution = self.repair_solution(solution, best_fitness, max_depth)
+        if completed:
+            best_solution = solution
+            best_fitness = self.fitness(best_solution)
+            
         for _ in range(iter):
-            completed, solution = self.repair_solution(solution, best_fitness)
-            if completed:
-                return solution
+            solution = self.relocate_and_remove_infeasible_nodes(solution)
+            if self.fitness(solution) < best_fitness:
+                best_solution = solution
+                best_fitness = self.fitness(best_solution)
                 
         
-        return initial_solution
+        return best_solution
 
     def Solve(self):
+        Feasible = False
+        best_solution = None
+        stable_step = 0
+        local_best_solution = None
+        reset = True
         for gen in range(self.generations):
             solution = self.GA()
-            best_solution = None
+            if gen == 0:
+                best_solution = solution
+            if reset:
+                local_best_solution = solution
+                reset = False
             
             valid_, cost = evaluate(solution, self.time_windows, self.travel_time)
-
             if valid_:
-                best_solution = solution
-            
-            
+                Feasible = True
+
+            self.fitness(solution)
             # You may want to track and print the best solution so far
-            print(f"Generation {gen + 1}: Best Solution: {best_solution}")
+            print(f"Generation {gen + 1}: Best Solution: {best_solution} Feasible: {Feasible}")
         
-            print(self.fitness(solution))
-            if best_solution is None:
+            print(self.fitness(local_best_solution))
+            if self.fitness(local_best_solution) > self.fitness(solution):
+                local_best_solution = solution
+                stable_step = 0
+            else:
+                stable_step += 1
+
+            if self.fitness(best_solution) > self.fitness(solution):
                 best_solution = solution
+
+            
+            
         # Optionally, return the best solution found after all generations
-            if (gen + 1) % 30 == 0:
-                self.add_random_individuals(30)
-        return best_solution
+            if (stable_step + 1) % 10 == 0:
+                self.add_random_individuals(50)
+            if (stable_step + 1) % 20 == 0:
+                self.mutation_rate = 0.5
+            if (stable_step + 1) % 80 == 0:
+                self.mutation_rate = 1
+            if stable_step == 100:
+                self.mutation_rate = 0.2
+                stable_step = 0
+                reset = True
+                self.add_random_individuals(self.population_size)
+            if time.process_time() > self.end_time:
+                break
+            
+        return best_solution 
+
 
     def relocate_and_remove_infeasible_nodes(self, route):
         """
@@ -494,79 +607,10 @@ class GASolves():
         return new_route
 
 
-
-    # def repair_solution(self, route, max_depth=120):
-    #     """
-    #     Repairs a TSP-TW route iteratively to ensure time window feasibility.
-
-    #     Parameters:
-    #         route (list): Current route as a list of nodes.
-    #         max_depth (int): Maximum attempts to repair the route.
-
-    #     Returns:
-    #         tuple: (bool, list) - Feasibility status and repaired route.
-    #     """
-    #     repaired_route = []
-    #     ready_time = []
-    #     current_time = 0
-    #     depth_attempts = 0
-    #     i = 0  # Start from the first node
-
-    #     while i < len(route):
-    #         if depth_attempts >= max_depth:
-    #             return False, route  # Abort repair if max depth is reached
-
-    #         node = route[i]
-    #         start_time, end_time, duration = self.time_windows[node]
-
-    #         # Check if arrival time violates the time window
-    #         if current_time < start_time:
-    #             # Arrive too early: Wait until the window opens
-    #             current_time = start_time
-
-    #         elif current_time > end_time:
-    #             # Arrive too late: Attempt to repair
-    #             delayed_node = node
-    #             insert_idx = 0
-
-    #             # Find a valid position to reinsert the node
-    #             for j in range(i):
-    #                 if (
-    #                     ready_time[j] + self.travel_time[route[j]][delayed_node]
-    #                     <= end_time
-    #                 ):
-    #                     insert_idx = j + 1
-
-    #             # If no valid position, return infeasibility
-    #             if insert_idx == -1:
-    #                 return False, route
-
-    #             # Remove the delayed node and reinsert it at a feasible position
-    #             route.pop(i)
-    #             route.insert(insert_idx, delayed_node)
-    #             depth_attempts += 1  # Increment repair attempts
-
-    #             # Start repair from the next node after insertion
-    #             i = insert_idx + 1
-    #             current_time = ready_time[insert_idx - 1] + self.travel_time[route[insert_idx - 1]][delayed_node] + duration
-    #             continue  # Skip the increment for i
-
-    #         # Node is feasible; add to repaired route
-    #         repaired_route.append(node)
-    #         if i < len(route) - 1:
-    #             travel_time = self.travel_time[node][route[i + 1]]
-    #             current_time += travel_time + duration
-    #             ready_time.append(current_time)
-
-    #         i += 1  # Proceed to the next node
-
-    #     return True, repaired_route
-
-
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\N20ft304.dat")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg233.2.tw")
     
 
 
@@ -576,10 +620,11 @@ if __name__ == '__main__':
         time_windows=time_windows,
         travel_time=travel_time,
         population_size=500, 
-        generations=1000, 
-        mutation_rate=0.5, 
+        generations=999999, 
+        mutation_rate=0.2, 
         tournament_size=8, 
-        elitism_size=2
+        elitism_size=2, 
+        time_out=180 #second
     )
 
 
@@ -587,8 +632,11 @@ if __name__ == '__main__':
     best_solution = tsp_solver.Solve()
     print("Best Solution after all generations:", best_solution)
     print(evaluate(best_solution, time_windows, travel_time))
-    # route = [1, 18, 92, 88, 48, 69, 24, 73, 9, 33, 39, 61, 60, 32, 19, 95, 23, 28, 79, 89, 25, 38, 7, 47, 26, 15, 99, 55, 76, 5, 41, 37, 6, 72, 36, 31, 30, 3, 64, 42, 80, 67, 35, 46, 57, 75, 49, 2, 16, 14, 97, 85, 29, 56, 98, 100, 87, 52, 51, 11, 71, 65, 21, 44, 74, 70, 53, 20, 4, 54, 82, 50, 84, 17, 78, 8, 10, 96, 83, 27, 59, 13, 45, 40, 22, 90, 58, 63, 93, 94, 68, 43, 34, 66, 91, 62, 86, 12, 81, 77]
+    # route = [2, 3, 29, 1, 5, 6, 7, 12, 8, 16, 9, 17, 10, 18, 11, 19, 20, 13, 21, 14, 22, 15, 24, 25, 27, 28, 30, 23, 31, 33, 26, 34, 35, 36, 32, 39, 41, 42, 43, 44, 37, 38, 40, 47, 48, 49, 50, 45, 46, 4]
     # print(tsp_solver.fitness(route))
-    # _, solution = tsp_solver.repair_solution(route, tsp_solver.fitness(route), 100)    
-    # print(solution, tsp_solver.fitness(solution), _)
+    # solution = tsp_solver.relocate_and_remove_infeasible_nodes(route)  
+
+    # print(solution, tsp_solver.fitness(solution), tsp_solver.fitness(route))
     # 83235.0
+
+    

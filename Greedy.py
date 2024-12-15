@@ -59,7 +59,7 @@ from utils import evaluate
 
 # Example usage
 if __name__ == "__main__":
-    N, time_windows, travel_time = read_input(True, "MiniProjectOptimize\TestCase\Subtask_100\input1.txt")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\n40w20.003.txt")
 
     tour, total_time = greedy_tsp_with_time_windows(N, travel_time, time_windows)
     print("Tour:", tour)
