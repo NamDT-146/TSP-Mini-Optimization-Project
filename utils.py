@@ -21,13 +21,13 @@ def read_input(from_file=False, file_path=None):
         # Read time window and service time for each node
         time_windows = [(-1, -1, -1)]
         for i in range(1, N + 1):
-            e, l, d = map(int, lines[i].strip().split())
+            e, l, d = map(float, lines[i].strip().split())
             time_windows.append((e, l, d))
 
         # Read the travel time matrix
         travel_time = []
         for i in range(N + 1, len(lines)):
-            row = list(map(int, lines[i].strip().split()))
+            row = list(map(float, lines[i].strip().split()))
             travel_time.append(row)
 
     else:
@@ -37,13 +37,13 @@ def read_input(from_file=False, file_path=None):
         # Read time window and service time for each node
         time_windows = [(-1, -1, -1)]
         for _ in range(N):
-            e, l, d = map(int, input().split())
+            e, l, d = map(float, input().split())
             time_windows.append((e, l, d))
 
         # Read the travel time matrix
         travel_time = []
         for _ in range(N + 1):  # N+1 because of depot (node 0)
-            row = list(map(int, input().split()))
+            row = list(map(float, input().split()))
             travel_time.append(row)
 
     return N, time_windows, travel_time
@@ -81,7 +81,7 @@ def evaluate(solution, time_windows, travel_time):
         if total_time <= late_TW:   
             total_time += dur
         else: 
-            # print(f"go {how_far}")
+            print(f"go {how_far}")
             return False, -1
 
         present_position = next_position

@@ -137,7 +137,7 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
 
 def main():
     # Read input
-    N, time_windows, travel_time = read_input(True, "TestCase/Subtask_1000/input7.txt")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\N40ft210.dat")
 
     # Generate initial solution
     initial_solution = generate_initial_solution(N, time_windows, travel_time)
