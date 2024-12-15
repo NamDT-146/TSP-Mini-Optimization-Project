@@ -284,7 +284,7 @@ class GASolves():
         # Return the best solution
         return self.population[best_solution_idx]
 
-    def repair_solution(self, route, best_fitness, max_depth = 10):
+    def repair_solution(self, route, best_fitness, max_depth = 20):
         """
         Repairs a TSP-TW route to ensure time window feasibility.
 
