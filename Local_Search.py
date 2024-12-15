@@ -137,7 +137,7 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
 
 def main():
     # Read input
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\N40ft210.dat")
+    N, time_windows, travel_time = read_input(True, "TestCase/Subtask_100/rc_201.1.txt")
 
     # Generate initial solution
     initial_solution = generate_initial_solution(N, time_windows, travel_time)
@@ -151,9 +151,16 @@ def main():
     if best_solution is None:
         print("No feasible solution found during Local Search.")
     else:
-        # Output
+        # Output the best solution
         print(N)
         print(' '.join(map(str, best_solution)))
+        # Also print the cost (total time) of this best solution
+        print("Cost:", best_time)
+
+
+if __name__ == "__main__":
+    main()
+
 
 
 if __name__ == "__main__":

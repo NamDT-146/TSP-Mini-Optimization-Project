@@ -300,7 +300,7 @@ class ACO_Solver():
 # Example usage
 if __name__ == "__main__":
     use_file = True
-    file_path = "TestCase\Subtask_100\\N20ft401.dat"
+    file_path = "TestCase/Subtask_100/N20ft301.dat"
     
     N, time_windows, travel_time = read_input(from_file=use_file, file_path=file_path)
 
