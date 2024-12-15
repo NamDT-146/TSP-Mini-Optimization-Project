@@ -469,9 +469,9 @@ class GASolves():
         # Optionally, return the best solution found after all generations
             if (stable_step + 1) % 10 == 0:
                 self.add_random_individuals(50)
-            if (stable_step + 1) % 20 == 0:
+            if (stable_step)  == 20:
                 self.mutation_rate = 0.5
-            if (stable_step + 1) % 80 == 0:
+            if (stable_step) == 50:
                 self.mutation_rate = 1
             if stable_step == 100:
                 self.mutation_rate = 0.2
@@ -610,7 +610,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg233.2.tw")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg152.3.tw")
     
 
 
@@ -619,7 +619,7 @@ if __name__ == '__main__':
         N = N,
         time_windows=time_windows,
         travel_time=travel_time,
-        population_size=500, 
+        population_size=200, 
         generations=999999, 
         mutation_rate=0.2, 
         tournament_size=8, 
