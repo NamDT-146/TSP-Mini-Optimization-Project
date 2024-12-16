@@ -82,6 +82,7 @@ class ACO_Solver():
         # print(heuristic)
 
         greedy_solution, cost = greedy_tsp_with_time_windows(N, travel_time, time_windows)
+        print(cost)
 
         prev_node = 0
         for next_node in greedy_solution:
@@ -92,7 +93,7 @@ class ACO_Solver():
         self.beta = beta  # Heuristic influence
         self.theta = theta
         self.evaporation_rate = evaporation_rate
-        self.Q = cost  # Pheromone deposit constant
+        self.Q = 1000  # Pheromone deposit constant
         self.num_ants = num_ants
         self.num_iterations = iteration
 
@@ -291,7 +292,7 @@ class ACO_Solver():
             #     for e in row:
             #         print(f"%.2f"%e, end=" ")
             #     print()
-            # print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
+            print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
 
         # print("Best Solution:", best_solution)
         # print("Best Cost:", best_cost)
@@ -300,7 +301,7 @@ class ACO_Solver():
 # Example usage
 if __name__ == "__main__":
     use_file = True
-    file_path = "TestCase\Subtask_100\\N20ft401.dat"
+    file_path = "TestCase\Subtask_100\\rc208.2"
     
     N, time_windows, travel_time = read_input(from_file=use_file, file_path=file_path)
 

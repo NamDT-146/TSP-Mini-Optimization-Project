@@ -97,7 +97,7 @@ class GASolves():
 
         feasible_loss =  (save_rm_node + 1) * self.mean_distance * 2 +  (total_penalty) / self.N + 0.25 * (self.max_endtime - mn_end_time) / self.N  
         # Return the total fitness, considering distance and penalty
-        total_fitness =  feasible_loss * 5 + current_time / self.N
+        total_fitness =  feasible_loss + current_time / self.N
         # total_fitness =  (total_penalty) / self.N + 0.25 * (self.max_endtime - mn_end_time) / self.N + current_time / self.N
         return total_fitness
 
@@ -317,8 +317,8 @@ class GASolves():
             offspring1 = self.shuffle_segment_mutation(offspring1, self.mutation_rate, self.mutation_length)
             offspring2 = self.shuffle_segment_mutation(offspring2, self.mutation_rate, self.mutation_length)
 
-            offspring1 = self.improve(offspring1, 5, 1)
-            offspring2 = self.improve(offspring2, 5, 1)
+            offspring1 = self.improve(offspring1, 10, 1)
+            offspring2 = self.improve(offspring2, 10, 1)
             # Apply Local Search to the offspring
 
             offspring1 = self.Growth(offspring1)
@@ -610,7 +610,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\n80w60.001.txt")
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg233.tw")
     
 
 
@@ -624,7 +624,7 @@ if __name__ == '__main__':
         mutation_rate=0.2, 
         tournament_size=8, 
         elitism_size=2, 
-        time_out=180 #second
+        time_out=600 #second
     )
 
 
