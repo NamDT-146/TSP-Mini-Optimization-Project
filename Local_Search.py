@@ -1,4 +1,8 @@
 import random
+import time
+
+start_time = 0
+end_time = 0
 
 def read_input(from_file=False, file_path=None):
     """
@@ -122,7 +126,7 @@ def generate_initial_solution(N, time_windows, travel_time):
 
         if not feasible_customers:
             # No feasible customer to visit next
-            print(f"No feasible customers found from current node {current} at time {current_time}.")
+            # print(f"No feasible customers found from current node {current} at time {current_time}.")
             return None
 
         # Dynamically scale randomness probability based on scores
@@ -137,7 +141,7 @@ def generate_initial_solution(N, time_windows, travel_time):
             total_scaled_prob = sum(scores)
             probabilities = [prob / total_scaled_prob for prob in scores]
         
-        print(probabilities)
+        # print(probabilities)
 
         # Select the next customer based on the scaled probabilities
         next_customer = random.choices([customer for customer, _ in feasible_customers], probabilities)[0]
@@ -183,6 +187,8 @@ def S_Improvement(current_solution, time_windows, travel_time):
     Returns:
         list or None: The best improving neighbor or None if no improvement is found.
     """
+
+    improved = False
     is_feasible, current_time = evaluate(current_solution, time_windows, travel_time)
     if not is_feasible:
         # Current solution not feasible, no reason to improve from here.
@@ -197,8 +203,12 @@ def S_Improvement(current_solution, time_windows, travel_time):
             new_solution = two_opt_swap(current_solution, i, k)
             feasible, new_time = evaluate(new_solution, time_windows, travel_time)
             if feasible and new_time < best_time:
+                improved = True
                 best_neighbor = new_solution
                 best_time = new_time
+    
+    if not improved:
+        return None
 
     return best_neighbor
 
@@ -218,13 +228,16 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
         list: Best found solution.
         int: Total time of the best solution.
     """
-    best_solution = initial_solution
-    is_feasible, best_time = evaluate(best_solution, time_windows, travel_time)
-    if not is_feasible:
-        print("Initial solution is not feasible.")
-        return None, -1
+    global end_time
+
+    if initial_solution is not None:
+        best_solution = initial_solution
+        is_feasible, best_time = evaluate(best_solution, time_windows, travel_time)
+    else:
+        return None, float("inf"), max_iterations
+
     
-    for _ in range(10):
+    while max_iterations > 0:
         # Use S-Improvement to select the next solution
         improved_solution = S_Improvement(best_solution, time_windows, travel_time)
         if improved_solution is None:
@@ -240,47 +253,60 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
             # Hence this check is somewhat redundant.
             break
 
+        if time.process_time() > end_time:
+                max_iterations = 0
+
         max_iterations -= 1
 
     return best_solution, best_time, max_iterations
 
 def Solve_LocalSearch(N, time_windows, travel_time, max_retries=400000):
     # Retry mechanism for generating initial solution
+
+    global end_time
+
     initial_solution = None
     best_cost = float('inf')
     best_solution = None
     while max_retries > 0:
-        initial_solution = generate_initial_solution(N, time_windows, travel_time)
-        if initial_solution is not None:
-            break
+        while max_retries > 0:
+            initial_solution = generate_initial_solution(N, time_windows, travel_time)
+            if initial_solution is not None:
+                break
 
-        if initial_solution is None:
-            print("No feasible initial solution found after maximum retries.")
-            return
+            if initial_solution is None:
+                # print("No feasible initial solution found after maximum retries.")
+                max_retries -= 1
+                if time.process_time() > end_time:
+                    max_retries = 0
+            
 
-        print("Initial solution found:", initial_solution)
+        # print("Initial solution found:", initial_solution)
 
         # Perform Local Search using S-Improvement
         local_best_solution, local_best_cost, max_retries = local_search(N, time_windows, travel_time, initial_solution, max_retries)
 
-        if local_best_solution is None:
-            print("No feasible solution found during Local Search.")
-        else:
+        # if local_best_solution is None:
+            # print("No feasible solution found during Local Search.")
             # Output the best solution
-            if best_cost > local_best_cost:
-                best_cost = local_best_cost
-                best_solution = local_best_solution
+        if best_cost > local_best_cost:
+            best_cost = local_best_cost
+            best_solution = local_best_solution
 
-        max_retries -= 1
     return best_solution
 
 
 def main():
+    global start_time, end_time
+
+    start_time = time.process_time()
+    end_time = start_time + 270  # Second 
     # Read input
-    N, time_windows, travel_time = read_input(True, 'TestCase/Subtask_10/rc_207.4.txt')
+    
+    N, time_windows, travel_time = read_input(True, 'TestCase\Subtask_100\\rbg021.8.tw')
 
     # Retry mechanism for generating initial solution
-    max_retries = 1
+    max_retries = 1000000000
     # Perform Local Search using S-Improvement
     best_solution = Solve_LocalSearch(N, time_windows, travel_time, max_retries)
 

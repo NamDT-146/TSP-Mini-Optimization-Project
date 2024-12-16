@@ -69,7 +69,6 @@ def evaluate(solution, time_windows, travel_time):
     present_position = 0
     how_far = 0
     for next_position in solution:
-        how_far += 1
         early_TW, late_TW, dur = time_windows[next_position]
         if next_position == 0: 
             total_time = max(total_time, early_TW) + dur #Ready to go
@@ -83,6 +82,19 @@ def evaluate(solution, time_windows, travel_time):
         else: 
             return False, -1
 
+        how_far += 1
         present_position = next_position
 
     return True, total_time + travel_time[present_position][0]
+<<<<<<< HEAD
+    
+
+if __name__ == "__main__":
+    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\rc201.0")
+
+    solution = [int(i) for i in "14 40 78 8 41 71 9 18 10 45 16 64 79 33 62 29 65 24 31 42 36 56 34 48 51 38 74 21 7 67 63 30 76 19 59 5 55 61 17 53 47 44 57 70 73 4 1 69 49 39 52 32 28 58 26 25 72 66 60 54 22 3 75 43 12 20 15 11 68 77 37 13 46 23 27 6 35 50 80 2".split()]
+    solution = [11, 2, 1, 23, 15, 19, 6, 5, 8, 9, 18, 24, 20, 21, 3, 12, 13, 4, 22, 17, 7, 10, 14, 16, 25]
+    print(evaluate(solution, time_windows, travel_time ))
+
+=======
+>>>>>>> 1b339e424671cd19018724750f7d57b6e0aba514
