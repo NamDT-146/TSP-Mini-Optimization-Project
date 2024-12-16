@@ -1,7 +1,95 @@
 import random
-from utils import evaluate, read_input
-from Greedy import greedy_tsp_with_time_windows
 import time
+
+def read_input(from_file=False, file_path=None):
+    """
+    Reads input for the TSP with Time Windows problem.
+    
+    Args:
+        from_file (bool): Whether to read input from a file.
+        file_path (str): Path to the input file (if from_file is True).
+
+    Returns:
+        N (int): Number of nodes (customers + depot).
+        time_windows (list of tuples): List of (e(i), l(i), d(i)) for each node.
+        travel_time (list of lists): Matrix of travel times t(i, j).
+    """
+    if from_file and file_path:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+        
+        # Read number of nodes
+        N = int(lines[0].strip())
+
+        # Read time window and service time for each node
+        time_windows = [(-1, -1, -1)]
+        for i in range(1, N + 1):
+            e, l, d = map(float, lines[i].strip().split())
+            time_windows.append((e, l, d))
+
+        # Read the travel time matrix
+        travel_time = []
+        for i in range(N + 1, len(lines)):
+            row = list(map(float, lines[i].strip().split()))
+            travel_time.append(row)
+
+    else:
+        # Read number of nodes
+        N = int(input())
+
+        # Read time window and service time for each node
+        time_windows = [(-1, -1, -1)]
+        for _ in range(N):
+            e, l, d = map(float, input().split())
+            time_windows.append((e, l, d))
+
+        # Read the travel time matrix
+        travel_time = []
+        for _ in range(N + 1):  # N+1 because of depot (node 0)
+            row = list(map(float, input().split()))
+            travel_time.append(row)
+
+    return N, time_windows, travel_time
+
+ 
+
+def evaluate(solution, time_windows, travel_time):
+    """
+    Evaluates a given solution for the TSP with Time Windows problem.
+
+    Args:
+        solution (list): A permutation of nodes representing the delivery route.
+        time_windows (list of tuples): Time windows (e(i), l(i)) and service durations (d(i)) for each node.
+        travel_time (list of lists): Matrix of travel times t(i, j).
+
+    Returns:
+        tuple:
+            bool: True if the solution is valid (meets all time window constraints), False otherwise.
+            int: Total time taken for the route if valid, or -1 if invalid.
+    """
+
+    total_time = 0
+    present_position = 0
+    how_far = 0
+    for next_position in solution:
+        early_TW, late_TW, dur = time_windows[next_position]
+        if next_position == 0: 
+            total_time = max(total_time, early_TW) + dur #Ready to go
+            continue
+
+        total_time += travel_time[present_position][next_position]
+        total_time = max(total_time, early_TW)
+
+        if total_time <= late_TW:   
+            total_time += dur
+        else: 
+            return False, -1
+
+        how_far += 1
+        present_position = next_position
+
+    return True, total_time + travel_time[present_position][0]
+
 
 
 class GASolves():
@@ -215,36 +303,6 @@ class GASolves():
             return improved_solution
         return solution
 
-    # def LocalSearch(self, route):
-    #     """
-    #     Applies fitness-guided 2-Opt local search for TSP-TW.
-
-    #     Args:
-    #         route (list): Current route as a list of nodes.
-    #         time_windows (dict): Dictionary of nodes with (earliest, latest) time windows.
-    #         travel_time (dict): Travel time matrix.
-    #         fitness_function (function): Function to evaluate the fitness of a solution.
-
-    #     Returns:
-    #         list: Improved route if fitness improves, otherwise the original.
-    #     """
-    #     current_fitness = self.fitness(route)
-    #     best_route = route[:]
-        
-    #     for i in range(1, len(route) - 2):  # Avoid depot at start and end
-    #         for j in range(i + 1, len(route) - 1):
-    #             # Perform a 2-opt swap
-    #             new_route = best_route[:i] + best_route[i:j][::-1] + best_route[j:]
-
-                
-    #             new_fitness = self.fitness(new_route)
-
-    #             # Update if fitness improves
-    #             if new_fitness < current_fitness:
-    #                 current_fitness = new_fitness
-    #                 best_route = new_route
-    #     return best_route
-
 
     def LocalSearch(self, route, num_trials=3):
         """
@@ -452,9 +510,9 @@ class GASolves():
 
             self.fitness(solution)
             # You may want to track and print the best solution so far
-            print(f"Generation {gen + 1}: Best Solution: {best_solution} Feasible: {Feasible}")
+            # print(f"Generation {gen + 1}: Best Solution: {best_solution} Feasible: {Feasible}")
         
-            print(self.fitness(local_best_solution))
+            # print(self.fitness(local_best_solution))
             if self.fitness(local_best_solution) > self.fitness(solution):
                 local_best_solution = solution
                 stable_step = 0
@@ -607,36 +665,27 @@ class GASolves():
         return new_route
 
 
-if __name__ == '__main__':
+N, time_windows, travel_time = read_input(False, None)
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_1000\\rbg233.tw")
-    
+
+# Example to initialize and solve the problem
+tsp_solver = GASolves(
+    N = N,
+    time_windows=time_windows,
+    travel_time=travel_time,
+    population_size=1000, 
+    generations=999999, 
+    mutation_rate=0.2, 
+    tournament_size=8, 
+    elitism_size=2, 
+    time_out=270 #second
+)
 
 
-    # Example to initialize and solve the problem
-    tsp_solver = GASolves(
-        N = N,
-        time_windows=time_windows,
-        travel_time=travel_time,
-        population_size=1000, 
-        generations=999999, 
-        mutation_rate=0.2, 
-        tournament_size=8, 
-        elitism_size=2, 
-        time_out=600 #second
-    )
+# Solve the TSP problem
+best_solution = tsp_solver.Solve()
+print(N)
+for node in best_solution:
+    print(node, end=" ")
 
-
-    # Solve the TSP problem
-    best_solution = tsp_solver.Solve()
-    print("Best Solution after all generations:", best_solution)
-    print(evaluate(best_solution, time_windows, travel_time))
-    # route = [2, 3, 29, 1, 5, 6, 7, 12, 8, 16, 9, 17, 10, 18, 11, 19, 20, 13, 21, 14, 22, 15, 24, 25, 27, 28, 30, 23, 31, 33, 26, 34, 35, 36, 32, 39, 41, 42, 43, 44, 37, 38, 40, 47, 48, 49, 50, 45, 46, 4]
-    # print(tsp_solver.fitness(route))
-    # solution = tsp_solver.relocate_and_remove_infeasible_nodes(route)  
-
-    # print(solution, tsp_solver.fitness(solution), tsp_solver.fitness(route))
-    # 83235.0
-
-    

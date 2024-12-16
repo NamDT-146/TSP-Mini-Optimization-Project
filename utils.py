@@ -80,13 +80,13 @@ def evaluate(solution, time_windows, travel_time):
         if total_time <= late_TW:   
             total_time += dur
         else: 
-            print(f"go {how_far}")
             return False, -1
 
         how_far += 1
         present_position = next_position
 
     return True, total_time + travel_time[present_position][0]
+<<<<<<< HEAD
     
 
 if __name__ == "__main__":
@@ -96,3 +96,5 @@ if __name__ == "__main__":
     solution = [11, 2, 1, 23, 15, 19, 6, 5, 8, 9, 18, 24, 20, 21, 3, 12, 13, 4, 22, 17, 7, 10, 14, 16, 25]
     print(evaluate(solution, time_windows, travel_time ))
 
+=======
+>>>>>>> 1b339e424671cd19018724750f7d57b6e0aba514

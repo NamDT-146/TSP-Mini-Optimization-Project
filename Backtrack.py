@@ -75,7 +75,7 @@ def branch_n_bound_TSP(N, travel_time, time_windows):
 
 # Example usage
 if __name__ == "__main__":
-    N, time_windows, travel_time = read_input(True, "MiniProjectOptimize\TestCase\Subtask_10\input2.txt")
+    N, time_windows, travel_time = read_input(True, "TestCase/Subtask_100/N20ft301.dat")
 
     optimal_tour, optimal_cost = branch_n_bound_TSP(N, travel_time, time_windows )
     

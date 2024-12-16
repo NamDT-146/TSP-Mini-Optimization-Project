@@ -1,11 +1,103 @@
-import sys
 import random
-from copy import deepcopy
-from utils import evaluate, read_input
+import time
+
+start_time = 0
+end_time = 0
+
+def read_input(from_file=False, file_path=None):
+    """
+    Reads input for the TSP with Time Windows problem.
+    
+    Args:
+        from_file (bool): Whether to read input from a file.
+        file_path (str): Path to the input file (if from_file is True).
+
+    Returns:
+        N (int): Number of nodes (customers + depot).
+        time_windows (list of tuples): List of (e(i), l(i), d(i)) for each node.
+        travel_time (list of lists): Matrix of travel times t(i, j).
+    """
+    if from_file and file_path:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+        
+        # Read number of nodes
+        N = int(lines[0].strip())
+
+        # Read time window and service time for each node
+        time_windows = [(-1, -1, -1)]
+        for i in range(1, N + 1):
+            e, l, d = map(float, lines[i].strip().split())
+            time_windows.append((e, l, d))
+
+        # Read the travel time matrix
+        travel_time = []
+        for i in range(N + 1, len(lines)):
+            row = list(map(float, lines[i].strip().split()))
+            travel_time.append(row)
+
+    else:
+        # Read number of nodes
+        N = int(input())
+
+        # Read time window and service time for each node
+        time_windows = [(-1, -1, -1)]
+        for _ in range(N):
+            e, l, d = map(float, input().split())
+            time_windows.append((e, l, d))
+
+        # Read the travel time matrix
+        travel_time = []
+        for _ in range(N + 1):  # N+1 because of depot (node 0)
+            row = list(map(float, input().split()))
+            travel_time.append(row)
+
+    return N, time_windows, travel_time
+
+ 
+
+def evaluate(solution, time_windows, travel_time):
+    """
+    Evaluates a given solution for the TSP with Time Windows problem.
+
+    Args:
+        solution (list): A permutation of nodes representing the delivery route.
+        time_windows (list of tuples): Time windows (e(i), l(i)) and service durations (d(i)) for each node.
+        travel_time (list of lists): Matrix of travel times t(i, j).
+
+    Returns:
+        tuple:
+            bool: True if the solution is valid (meets all time window constraints), False otherwise.
+            int: Total time taken for the route if valid, or -1 if invalid.
+    """
+
+    total_time = 0
+    present_position = 0
+    how_far = 0
+    for next_position in solution:
+        how_far += 1
+        early_TW, late_TW, dur = time_windows[next_position]
+        if next_position == 0: 
+            total_time = max(total_time, early_TW) + dur #Ready to go
+            continue
+
+        total_time += travel_time[present_position][next_position]
+        total_time = max(total_time, early_TW)
+
+        if total_time <= late_TW:   
+            total_time += dur
+        else: 
+            return False, -1
+
+        present_position = next_position
+
+    return True, total_time + travel_time[present_position][0]
+
 
 def generate_initial_solution(N, time_windows, travel_time):
     """
-    Generates an initial feasible solution using a greedy approach.
+    Generates an initial feasible solution using a greedy approach that considers
+    time windows, nearest node information, and a dynamically scaled randomness probability.
 
     Args:
         N (int): Number of customers.
@@ -26,14 +118,34 @@ def generate_initial_solution(N, time_windows, travel_time):
             e, l, d = time_windows[customer]
             arrival_time = current_time + travel_time[current][customer]
             if arrival_time <= l:
-                feasible_customers.append(customer)
+                # Calculate the composite score
+                distance = travel_time[current][customer]
+                time_window_width = l - e
+                score = 1 / (distance + 1) + N / (l + 1)
+                feasible_customers.append((customer, score))
 
         if not feasible_customers:
             # No feasible customer to visit next
+            # print(f"No feasible customers found from current node {current} at time {current_time}.")
             return None
 
-        # Select the customer with the earliest latest time (l)
-        next_customer = min(feasible_customers, key=lambda x: time_windows[x][1])
+        # Dynamically scale randomness probability based on scores
+        scores = [score for _, score in feasible_customers]
+        max_score = max(scores)
+        min_score = min(scores)
+        
+        if max_score == min_score:
+            # If all scores are the same, assign equal probabilities
+            probabilities = [1 / len(feasible_customers)] * len(feasible_customers)
+        else:
+            total_scaled_prob = sum(scores)
+            probabilities = [prob / total_scaled_prob for prob in scores]
+        
+        # print(probabilities)
+
+        # Select the next customer based on the scaled probabilities
+        next_customer = random.choices([customer for customer, _ in feasible_customers], probabilities)[0]
+
         solution.append(next_customer)
         unvisited.remove(next_customer)
         e, l, d = time_windows[next_customer]
@@ -75,6 +187,8 @@ def S_Improvement(current_solution, time_windows, travel_time):
     Returns:
         list or None: The best improving neighbor or None if no improvement is found.
     """
+
+    improved = False
     is_feasible, current_time = evaluate(current_solution, time_windows, travel_time)
     if not is_feasible:
         # Current solution not feasible, no reason to improve from here.
@@ -89,8 +203,12 @@ def S_Improvement(current_solution, time_windows, travel_time):
             new_solution = two_opt_swap(current_solution, i, k)
             feasible, new_time = evaluate(new_solution, time_windows, travel_time)
             if feasible and new_time < best_time:
+                improved = True
                 best_neighbor = new_solution
                 best_time = new_time
+    
+    if not improved:
+        return None
 
     return best_neighbor
 
@@ -110,13 +228,16 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
         list: Best found solution.
         int: Total time of the best solution.
     """
-    best_solution = initial_solution
-    is_feasible, best_time = evaluate(best_solution, time_windows, travel_time)
-    if not is_feasible:
-        print("Initial solution is not feasible.")
-        return None, -1
+    global end_time
 
-    for iteration in range(max_iterations):
+    if initial_solution is not None:
+        best_solution = initial_solution
+        is_feasible, best_time = evaluate(best_solution, time_windows, travel_time)
+    else:
+        return None, float("inf"), max_iterations
+
+    
+    while max_iterations > 0:
         # Use S-Improvement to select the next solution
         improved_solution = S_Improvement(best_solution, time_windows, travel_time)
         if improved_solution is None:
@@ -132,26 +253,67 @@ def local_search(N, time_windows, travel_time, initial_solution, max_iterations=
             # Hence this check is somewhat redundant.
             break
 
-    return best_solution, best_time
+        if time.process_time() > end_time:
+                max_iterations = 0
+
+        max_iterations -= 1
+
+    return best_solution, best_time, max_iterations
+
+def Solve_LocalSearch(N, time_windows, travel_time, max_retries=400000):
+    # Retry mechanism for generating initial solution
+
+    global end_time
+
+    initial_solution = None
+    best_cost = float('inf')
+    best_solution = None
+    while max_retries > 0:
+        while max_retries > 0:
+            initial_solution = generate_initial_solution(N, time_windows, travel_time)
+            if initial_solution is not None:
+                break
+
+            if initial_solution is None:
+                # print("No feasible initial solution found after maximum retries.")
+                max_retries -= 1
+                if time.process_time() > end_time:
+                    max_retries = 0
+            
+
+        # print("Initial solution found:", initial_solution)
+
+        # Perform Local Search using S-Improvement
+        local_best_solution, local_best_cost, max_retries = local_search(N, time_windows, travel_time, initial_solution, max_retries)
+
+        # if local_best_solution is None:
+            # print("No feasible solution found during Local Search.")
+            # Output the best solution
+        if best_cost > local_best_cost:
+            best_cost = local_best_cost
+            best_solution = local_best_solution
+
+    return best_solution
 
 
 def main():
+    global start_time, end_time
+
+    start_time = time.process_time()
+    end_time = start_time + 270  # Second 
     # Read input
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\N40ft210.dat")
+    
+    N, time_windows, travel_time = read_input(True, 'TestCase\Subtask_100\\rbg021.8.tw')
 
-    # Generate initial solution
-    initial_solution = generate_initial_solution(N, time_windows, travel_time)
-    if initial_solution is None:
-        print("No feasible initial solution found.")
-        return
-
+    # Retry mechanism for generating initial solution
+    max_retries = 1000000000
     # Perform Local Search using S-Improvement
-    best_solution, best_time = local_search(N, time_windows, travel_time, initial_solution)
+    best_solution = Solve_LocalSearch(N, time_windows, travel_time, max_retries)
 
     if best_solution is None:
         print("No feasible solution found during Local Search.")
     else:
-        # Output
+        # Output the best solution
         print(N)
         print(' '.join(map(str, best_solution)))
 
