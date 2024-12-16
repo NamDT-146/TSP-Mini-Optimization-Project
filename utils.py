@@ -81,18 +81,8 @@ def evaluate(solution, time_windows, travel_time):
         if total_time <= late_TW:   
             total_time += dur
         else: 
-            print(f"go {how_far}")
             return False, -1
 
         present_position = next_position
 
     return True, total_time + travel_time[present_position][0]
-    
-
-if __name__ == "__main__":
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\n80w60.001.txt")
-
-    solution = [int(i) for i in "14 40 78 8 41 71 9 18 10 45 16 64 79 33 62 29 65 24 31 42 36 56 34 48 51 38 74 21 7 67 63 30 76 19 59 5 55 61 17 53 47 44 57 70 73 4 1 69 49 39 52 32 28 58 26 25 72 66 60 54 22 3 75 43 12 20 15 11 68 77 37 13 46 23 27 6 35 50 80 2".split()]
-    solution = [40, 78, 14, 8, 41, 45, 10, 71, 9, 18, 16, 64, 79, 33, 62, 29, 65, 24, 42, 36, 56, 51, 21, 74, 38, 48, 34, 7, 67, 30, 5, 19, 76, 63, 59, 55, 47, 61, 53, 17, 1, 69, 73, 4, 49, 57, 70, 44, 28, 32, 39, 52, 58, 26, 25, 66, 22, 54, 72, 60, 20, 12, 3, 15, 11, 68, 43, 75, 77, 37, 13, 46, 27, 23, 6, 35, 80, 50, 31, 2]
-    print(evaluate(solution, time_windows, travel_time ))
-

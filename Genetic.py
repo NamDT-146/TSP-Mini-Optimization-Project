@@ -610,7 +610,7 @@ class GASolves():
 if __name__ == '__main__':
 
 
-    N, time_windows, travel_time = read_input(True, "TestCase\Subtask_100\\n80w60.001.txt")
+    N, time_windows, travel_time = read_input(False)
     
 
 
@@ -624,7 +624,7 @@ if __name__ == '__main__':
         mutation_rate=0.2, 
         tournament_size=8, 
         elitism_size=2, 
-        time_out=180 #second
+        time_out=300 #second
     )
 
 
@@ -632,11 +632,3 @@ if __name__ == '__main__':
     best_solution = tsp_solver.Solve()
     print("Best Solution after all generations:", best_solution)
     print(evaluate(best_solution, time_windows, travel_time))
-    # route = [2, 3, 29, 1, 5, 6, 7, 12, 8, 16, 9, 17, 10, 18, 11, 19, 20, 13, 21, 14, 22, 15, 24, 25, 27, 28, 30, 23, 31, 33, 26, 34, 35, 36, 32, 39, 41, 42, 43, 44, 37, 38, 40, 47, 48, 49, 50, 45, 46, 4]
-    # print(tsp_solver.fitness(route))
-    # solution = tsp_solver.relocate_and_remove_infeasible_nodes(route)  
-
-    # print(solution, tsp_solver.fitness(solution), tsp_solver.fitness(route))
-    # 83235.0
-
-    

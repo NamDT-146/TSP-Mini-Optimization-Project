@@ -287,20 +287,14 @@ class ACO_Solver():
                 
 
             self.update_pheromone(solutions)
-            # for row in pheromone:
-            #     for e in row:
-            #         print(f"%.2f"%e, end=" ")
-            #     print()
-            # print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
+            print(f"Iteration {iteration + 1}: Best Cost = {best_cost}")
 
-        # print("Best Solution:", best_solution)
-        # print("Best Cost:", best_cost)
-        return(best_solution, best_cost)
+        return best_solution, best_cost
 
 # Example usage
 if __name__ == "__main__":
     use_file = True
-    file_path = "TestCase/Subtask_100/N20ft301.dat"
+    file_path = "TestCase/Subtask_100/n100w20.001.txt"
     
     N, time_windows, travel_time = read_input(from_file=use_file, file_path=file_path)
 
